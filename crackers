@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Feed the Monster!</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #b3e5fc;
+      font-family: Arial, sans-serif;
+      touch-action: none;
+    }
+    #gameCanvas {
+      background: #b3e5fc;
+      display: block;
+      margin: 0 auto;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="score">Crackers Fed: 0</div>
+
+<audio id="chompSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_10d07f3c6c.mp3"></audio>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const chompSound = document.getElementById('chompSound');
+
+let monster = {
+  x: 400,
+  y: 150,
+  radius: 100,
+  mouthOpen: true
+};
+
+let mouth = {
+  x: 400,
+  y: 200,
+  width: 80,
+  height: 40
+};
+
+let cracker = {
+  x: 380,
+  y: 550,
+  width: 40,
+  height: 40,
+  dragging: false,
+  vx: 0,
+  vy: 0,
+  thrown: false
+};
+
+let score = 0;
+let draggingStart = {x: 0, y: 0};
+
+function getEventPos(e) {
+  if (e.touches) {
+    return {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  } else {
+    return {x: e.offsetX, y: e.offsetY};
+  }
+}
+
+canvas.addEventListener('mousedown', startDrag);
+canvas.addEventListener('touchstart', startDrag);
+canvas.addEventListener('mouseup', endDrag);
+canvas.addEventListener('touchend', endDrag);
+canvas.addEventListener('mousemove', dragCracker);
+canvas.addEventListener('touchmove', dragCracker);
+
+function startDrag(e) {
+  const pos = getEventPos(e);
+  if (pos.x >= cracker.x && pos.x <= cracker.x + cracker.width && pos.y >= cracker.y && pos.y <= cracker.y + cracker.height) {
+    cracker.dragging = true;
+    draggingStart = pos;
+  }
+}
+
+function endDrag(e) {
+  if (cracker.dragging) {
+    const pos = getEventPos(e);
+    cracker.vx = (pos.x - draggingStart.x) / 10;
+    cracker.vy = (pos.y - draggingStart.y) / 10;
+    cracker.dragging = false;
+    cracker.thrown = true;
+  }
+}
+
+function dragCracker(e) {
+  if (cracker.dragging) {
+    e.preventDefault();
+    const pos = getEventPos(e);
+    cracker.x = pos.x - cracker.width/2;
+    cracker.y = pos.y - cracker.height/2;
+  }
+}
+
+function update() {
+  if (cracker.thrown) {
+    cracker.x += cracker.vx;
+    cracker.y += cracker.vy;
+  }
+
+  if (
+    cracker.x + cracker.width/2 > mouth.x - mouth.width/2 &&
+    cracker.x + cracker.width/2 < mouth.x + mouth.width/2 &&
+    cracker.y + cracker.height/2 > mouth.y - mouth.height/2 &&
+    cracker.y + cracker.height/2 < mouth.y + mouth.height/2
+  ) {
+    cracker.thrown = false;
+    resetCracker();
+    score++;
+    document.getElementById('score').innerText = `Crackers Fed: ${score}`;
+    chompSound.currentTime = 0;
+    chompSound.play();
+    monster.mouthOpen = false;
+    setTimeout(() => { monster.mouthOpen = true; }, 300);
+  }
+
+  if (cracker.y < -50 || cracker.x < -50 || cracker.x > 850 || cracker.y > 650) {
+    cracker.thrown = false;
+    resetCracker();
+  }
+}
+
+function resetCracker() {
+  cracker.x = 380;
+  cracker.y = 550;
+  cracker.vx = 0;
+  cracker.vy = 0;
+}
+
+function drawMonster() {
+  ctx.fillStyle = '#8bc34a';
+  ctx.beginPath();
+  ctx.arc(monster.x, monster.y, monster.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (monster.mouthOpen) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(mouth.x - mouth.width/2, mouth.y - mouth.height/2, mouth.width, mouth.height);
+  } else {
+    ctx.fillStyle = '#ff5252';
+    ctx.fillRect(mouth.x - mouth.width/2, mouth.y - mouth.height/2, mouth.width, mouth.height);
+  }
+
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(monster.x - 30, monster.y - 30, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(monster.x + 30, monster.y - 30, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(monster.x - 30, monster.y - 30, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(monster.x + 30, monster.y - 30, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawCracker() {
+  ctx.fillStyle = '#fdd835';
+  ctx.fillRect(cracker.x, cracker.y, cracker.width, cracker.height);
+
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(cracker.x + 10, cracker.y + 10, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cracker.x + 30, cracker.y + 10, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cracker.x + 10, cracker.y + 30, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cracker.x + 30, cracker.y + 30, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawMonster();
+  drawCracker();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
